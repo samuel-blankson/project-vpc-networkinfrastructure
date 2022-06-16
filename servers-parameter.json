@@ -4,7 +4,7 @@
      "ParameterValue": "projectSAB"  
  },
  {
-     "ParameterKey": "KeyName",
-     "ParameterValue": "Gemini"  
+     "ParameterKey": "Capabilities",
+     "ParameterValue":"CAPABILITY_IAM"
  }
 ]
