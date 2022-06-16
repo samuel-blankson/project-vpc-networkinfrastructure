@@ -6,14 +6,72 @@ Parameters:
     Description: An Environment name that will be prefixed to resources
     Type: String
 
-  BastionHost:
-    Description: The IP address range that can be used to SSH to the EC2 instances
+  KeyName:
+    Description: Name of the key pair credentials to be attached to the instance
     Type: String
-    MinLength: 9
-    MaxLength: 18
-    Default: 0.0.0.0/0
 
 Resources:
+  BastionInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0747bdcabd34c712a
+      InstanceType: t3.medium
+      KeyName:
+        Fn::ImportValue: !Sub "${KeyName}"
+      SubnetId:
+        Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: allow access to bastion instance
+      VpcId:
+        Fn::ImportValue: !Sub "${EnvironmentName}-VPCID"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          DestinationSecurityGroupId: !Ref WebServerSecGroup
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref S3AccessRole
+
+  S3AccessRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: S3ReadAccessPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: "s3:List*"
+            Resource: "*"
+      Roles:
+        - !Ref S3AccessRole
+
   LBSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -44,8 +102,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp:
-            Fn::Sub: "${BastionHost}"
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 0
@@ -63,6 +120,7 @@ Resources:
           cd /var/www/html
           echo "it works! Udagram, Udacity" > index.html
       ImageId: ami-0747bdcabd34c712a
+      IamInstanceProfile: !Ref InstanceProfile
       SecurityGroups:
         - Ref: WebServerSecGroup
       InstanceType: t3.medium
@@ -127,6 +185,14 @@ Resources:
           Fn::Sub: "${EnvironmentName}-VPCID"
 
 Outputs:
-  WebsiteUrl:
+  LoadBalancerDNS:
     Value: !Sub http://${WebAppLB.DNSName}
     Description: public DNS of LoadBalancer
+    Export:
+      Name: websiteUrl
+
+  BastionHostPublicIp:
+    Description: "Bastion Host Public IP"
+    Value: !Sub "http://${BastionInstance.PublicIp}"
+    Export:
+      Name: BastionPublicIp
