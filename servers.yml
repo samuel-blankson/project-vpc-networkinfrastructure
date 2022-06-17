@@ -54,16 +54,6 @@ Resources:
       GroupDescription: allow access to bastion instance
       VpcId:
         Fn::ImportValue: !Sub "${EnvironmentName}-VPCID"
-      # SecurityGroupIngress:
-      #   - IpProtocol: tcp
-      #     FromPort: 22
-      #     ToPort: 22
-      #     CidrIp: 0.0.0.0/0
-      # SecurityGroupEgress:
-      #   - IpProtocol: tcp
-      #     FromPort: 22
-      #     ToPort: 22
-      #     DestinationSecurityGroupId: !Ref WebServerSecGroup
 
   BastionAllowInboundSSHFromInternet:
     Type: AWS::EC2::SecurityGroupIngress
